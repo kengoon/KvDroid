@@ -27,10 +27,13 @@ def is_system_package(package):
     pManager = activity.getPackageManager()
     package = pManager.getApplicationInfo(
         package, PackageManager().GET_META_DATA)
-    if ((package.flags & (ApplicationInfo().FLAG_SYSTEM | ApplicationInfo().FLAG_UPDATED_SYSTEM_APP)) != 0):
-        return True
-    else:
-        return False
+    return (
+        package.flags
+        & (
+            ApplicationInfo().FLAG_SYSTEM
+            | ApplicationInfo().FLAG_UPDATED_SYSTEM_APP
+        )
+    ) != 0
 
     
 def is_package_enabled(package):
@@ -40,10 +43,7 @@ def is_package_enabled(package):
 
 def package_source(package):
     installer = activity.getPackageManager().getInstallerPackageName(package)
-    if installer == "com.android.vending":
-        return "playstore"
-    else:
-        return "unknown"
+    return "playstore" if installer == "com.android.vending" else "unknown"
 
 
 def package_info(package):
@@ -63,15 +63,16 @@ def package_info(package):
     requestedPermissions = packagePerms.requestedPermissions
     permissions = []
     if requestedPermissions != None:
-        for i in range(len(requestedPermissions)):
-            permissions.append(requestedPermissions[i])
+        permissions.extend(
+            requestedPermissions[i] for i in range(len(requestedPermissions))
+        )
+
     activities = []
-    activity_list = pManager.getPackageInfo(
-        packageName, PackageManager().GET_ACTIVITIES).activities
-    if activity_list:
-        for act in activity_list:
-            activities.append(act.name)
-    infos = {"packageName": packageName,
+    if activity_list := pManager.getPackageInfo(
+        packageName, PackageManager().GET_ACTIVITIES
+    ).activities:
+        activities.extend(act.name for act in activity_list)
+    return {"packageName": packageName,
              "loadLabel": loadLabel,
              "loadIcon": loadIcon,
              "sourceDir": sourceDir,
@@ -82,7 +83,6 @@ def package_info(package):
              "permissions": permissions,
              "activities": activities
              }
-    return infos
 
 
 def activity_info(package, act):
@@ -92,8 +92,7 @@ def activity_info(package, act):
         component, PackageManager().GET_META_DATA)
     loadLabel = activityInfo.loadLabel(pManager)
     loadIcon = activityInfo.loadIcon(pManager)
-    infos = {
+    return {
         "loadLabel": loadLabel,
         "loadIcon": loadIcon
     }
-    return infos

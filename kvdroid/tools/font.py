@@ -82,25 +82,25 @@ from kvdroid.tools.lang import device_lang
 
 
 def system_font(language=None):
-    if language != None:
-        if language.lower() in iso_codes.keys():
-            try:
-                return font_dict[iso_codes[language.lower()]]
-            except:
-                return "Roboto"
-        else:
-            raise ValueError(
-                "The language definition must be in iso639-1 or iso639-2 code formats such as 'en' or 'eng'")
-    else:
+    if language is None:
         locale = device_lang()
         try:
             return font_dict[iso_codes[locale]]
         except:
             return "Roboto"
 
+    elif language.lower() in iso_codes.keys():
+        try:
+            return font_dict[iso_codes[language.lower()]]
+        except:
+            return "Roboto"
+    else:
+        raise ValueError(
+            "The language definition must be in iso639-1 or iso639-2 code formats such as 'en' or 'eng'")
+
 
 def register_font(lang, font):
-    if not lang in font_dict.keys():
+    if lang not in font_dict.keys():
         font_dict[lang] = font["name"]
         LabelBase.register(name=font["name"],
                            fn_regular=path + font["regular"],
@@ -114,12 +114,8 @@ def register_font(lang, font):
 def is_font_exist(font):
     if os.path.exists(path + font):
         return font
-    else:
-        new_font = font.split('.')[0]+'.otf'
-        if os.path.exists(new_font):
-            return new_font
-        else:
-            return None
+    new_font = font.split('.')[0]+'.otf'
+    return new_font if os.path.exists(new_font) else None
 
 
 def define_font(lang, item):
@@ -130,25 +126,42 @@ def define_font(lang, item):
             "(?<=\s)[A-Z].*\.ttf|(?<=\s)[A-Z].*\.ttc|(?<=\s)[A-Z].*\.otf|(?<=\">)[A-Z].*\.ttf|(?<=\">)[A-Z].*\.ttc|(?<=\">)[A-Z].*\.otf", f)
         if font:
             font = is_font_exist(font[0])
-            if font:
-                name = font.split("-")[0]
-                if not name.startswith('Roboto'):
-                    temp["name"] = name
-                    if "-Regular" in font:
-                        if not "regular" in temp.keys():
-                            temp["regular"] = font
-                    elif "-Bold" in font:
-                        if not "bold" in temp.keys():
-                            temp["bold"] = font
-                    elif "-Italic" in font:
-                        if not "italic" in temp.keys():
-                            temp["italic"] = font
-                    elif "-BoldItalic" in font:
-                        if not "bolditalic" in font:
-                            temp["bolditalic"] = font
-                    else:
-                        if not "regular" in temp.keys():
-                            temp["regular"] = font
+        if font:
+            name = font.split("-")[0]
+            if not name.startswith('Roboto'):
+                temp["name"] = name
+                if (
+                    "-Regular" in font
+                    and "regular" not in temp
+                    or "-Regular" not in font
+                    and "-Bold" not in font
+                    and "-Italic" not in font
+                    and "-BoldItalic" not in font
+                    and "regular" not in temp
+                ):
+                    temp["regular"] = font
+                elif (
+                    "-Regular" in font
+                    or "-Bold" in font
+                    and "bold" in temp
+                    or "-Bold" not in font
+                    and "-Italic" in font
+                    and "italic" in temp
+                    or "-Bold" not in font
+                    and "-Italic" not in font
+                    and "-BoldItalic" in font
+                    and "bolditalic" in font
+                    or "-Bold" not in font
+                    and "-Italic" not in font
+                    and "-BoldItalic" not in font
+                ):
+                    pass
+                elif "-Bold" in font:
+                    temp["bold"] = font
+                elif "-Italic" in font:
+                    temp["italic"] = font
+                else:
+                    temp["bolditalic"] = font
     if temp:
         register_font(lang, temp)
 
@@ -160,11 +173,8 @@ if os.path.exists("/system/etc/fonts.xml"):
     r = open("/system/etc/fonts.xml").read()
 elif os.path.exists("/system/etc/system_fonts.xml"):
     r = open("/system/etc/system_fonts.xml").read()
-else:
-    pass
 if r:
-    langs = re.findall("<family lang=[\s\S]*?</family>", r)
-    if langs:
+    if langs := re.findall("<family lang=[\s\S]*?</family>", r):
         for i in langs:
             lang = re.findall("\"(.*?)\"", i)[0]
             split_lang = lang.split(',')
